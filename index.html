@@ -187,6 +187,10 @@
                 font-size: clamp(12px, 3vw, 16px);
                 padding: 6px 10px;
             }
+
+            .mobile-controls {
+                display: flex;
+            }
         }
 
         .start-screen, .game-over-screen {
@@ -306,6 +310,7 @@
                 <p><strong>Controls:</strong></p>
                 <p>← → Arrow Keys or A/D to Move</p>
                 <p>SPACEBAR to Shoot</p>
+                <p>Tap the on-screen buttons on mobile to move and shoot</p>
                 <p>Destroy enemies and avoid their fire</p>
             </div>
 
@@ -332,28 +337,37 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const GAME_WIDTH = 800;
+        const GAME_HEIGHT = 600;
 
         // Detect mobile
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-        // Set up canvas scaling for responsive design
+        // Set up responsive canvas display size
         function resizeCanvas() {
             const container = canvas.parentElement;
             const rect = container.getBoundingClientRect();
-            
-            // Set display size
+
+            canvas.width = GAME_WIDTH;
+            canvas.height = GAME_HEIGHT;
             canvas.style.width = rect.width + 'px';
             canvas.style.height = rect.height + 'px';
-            
-            // Set internal resolution (keeping 800x600 ratio)
-            const scale = window.devicePixelRatio || 1;
-            canvas.width = 800 * scale;
-            canvas.height = 600 * scale;
-            ctx.scale(scale, scale);
         }
 
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
+
+        function updateMobileControlVisibility() {
+            const mobileControls = document.getElementById('mobileControls');
+            if (isMobile || window.innerWidth <= 768) {
+                mobileControls.classList.add('active');
+            } else {
+                mobileControls.classList.remove('active');
+            }
+        }
+
+        updateMobileControlVisibility();
+        window.addEventListener('resize', updateMobileControlVisibility);
 
         // Game states
         let gameState = 'start'; // start, playing, gameOver
@@ -412,7 +426,7 @@
             const rightBtn = document.getElementById('rightBtn');
             const shootBtn = document.getElementById('shootBtn');
 
-            if (isMobile) {
+            if (isMobile || window.innerWidth <= 768) {
                 mobileControls.classList.add('active');
             }
 
@@ -423,6 +437,11 @@
                 leftBtn.classList.add('pressed');
             });
             leftBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                mobileControlsState.leftPressed = false;
+                leftBtn.classList.remove('pressed');
+            });
+            leftBtn.addEventListener('touchcancel', (e) => {
                 e.preventDefault();
                 mobileControlsState.leftPressed = false;
                 leftBtn.classList.remove('pressed');
@@ -451,6 +470,11 @@
                 mobileControlsState.rightPressed = false;
                 rightBtn.classList.remove('pressed');
             });
+            rightBtn.addEventListener('touchcancel', (e) => {
+                e.preventDefault();
+                mobileControlsState.rightPressed = false;
+                rightBtn.classList.remove('pressed');
+            });
             rightBtn.addEventListener('mousedown', () => {
                 mobileControlsState.rightPressed = true;
                 rightBtn.classList.add('pressed');
@@ -471,6 +495,10 @@
                 shootBtn.classList.add('pressed');
             });
             shootBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                shootBtn.classList.remove('pressed');
+            });
+            shootBtn.addEventListener('touchcancel', (e) => {
                 e.preventDefault();
                 shootBtn.classList.remove('pressed');
             });
