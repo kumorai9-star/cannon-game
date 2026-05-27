@@ -464,7 +464,7 @@
         let powerups = [];
         const powerupRadius = 15;
         let powerupSpawnTimer = 0;
-        const powerupSpawnInterval = 120; // Spawn a power-up every 2 seconds (120 frames at 60fps)
+        const powerupSpawnInterval = 60; // Spawn a power-up every 1 second (60 frames at 60fps)
 
         // Power-up types with properties
         const POWERUP_TYPES = {
@@ -727,14 +727,17 @@
             const type = types[Math.floor(Math.random() * types.length)];
             const x = Math.random() * (canvas.width - powerupRadius * 2) + powerupRadius;
             
-            powerups.push({
+            const newPowerup = {
                 x: x,
                 y: -powerupRadius,
                 type: type,
                 vx: 0,
                 vy: 2,
                 radius: powerupRadius
-            });
+            };
+            
+            powerups.push(newPowerup);
+            console.log('Power-up spawned:', type, 'Total powerups:', powerups.length);
         }
 
         function updatePlayer() {
@@ -973,8 +976,16 @@
         }
 
         function drawPowerups() {
+            if (powerups.length > 0) {
+                console.log('Drawing', powerups.length, 'power-ups');
+            }
+            
             for (let powerup of powerups) {
                 const info = POWERUP_TYPES[powerup.type];
+                if (!info) {
+                    console.error('Unknown powerup type:', powerup.type);
+                    continue;
+                }
                 
                 // Draw circle
                 ctx.fillStyle = info.color;
