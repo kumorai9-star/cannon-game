@@ -989,12 +989,27 @@
                 ctx.stroke();
                 ctx.globalAlpha = 1;
                 
-                // Draw symbol/text
-                ctx.fillStyle = '#000000';
-                ctx.font = 'bold 16px Arial';
+                // Draw text background for better visibility
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.font = 'bold 12px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(info.symbol, powerup.x, powerup.y);
+                const textWidth = ctx.measureText(info.name).width + 6;
+                ctx.fillRect(powerup.x - textWidth / 2, powerup.y - 10, textWidth, 16);
+                
+                // Draw power-up name
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(info.name, powerup.x, powerup.y - 2);
+                
+                // Draw symbol on the circle
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(info.symbol, powerup.x, powerup.y + 8);
             }
         }
 
