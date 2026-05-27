@@ -462,7 +462,7 @@
 
         // Power-ups
         let powerups = [];
-        const powerupRadius = 15;
+        const powerupRadius = 24;
         let powerupSpawnTimer = 0;
         const powerupSpawnInterval = 60; // Spawn a power-up every 1 second (60 frames at 60fps)
 
@@ -729,12 +729,13 @@
             
             powerups.push({
                 x: x,
-                y: -powerupRadius * 2,
+                y: -powerupRadius,
                 type: type,
                 vx: 0,
-                vy: 2.5,
+                vy: 1.8,
                 radius: powerupRadius
             });
+            console.log('spawnPowerup', type, 'x=', x.toFixed(0));
         }
 
         function updatePlayer() {
@@ -970,6 +971,7 @@
 
             // Draw active effects indicator
             drawActiveEffects();
+            drawPowerupDebug();
         }
 
         function drawPowerups() {
@@ -1073,6 +1075,15 @@
                 ctx.fillText(`Rage: ${Math.ceil(player_effects.gunRage / 60)}s (x${stackCount})`, 10, yOffset);
                 yOffset += 20;
             }
+        }
+
+        function drawPowerupDebug() {
+            ctx.font = '12px Arial';
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Powerup timer: ${powerupSpawnTimer}/${powerupSpawnInterval}`, 10, canvas.height - 50);
+            ctx.fillText(`Active powerups: ${powerups.length}`, 10, canvas.height - 34);
+            ctx.fillText(`Game state: ${gameState}`, 10, canvas.height - 18);
         }
 
         function drawPlayer() {
