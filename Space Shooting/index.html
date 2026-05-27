@@ -468,12 +468,12 @@
 
         // Power-up types with properties
         const POWERUP_TYPES = {
-            doubleBullet: { name: '2x Bullet', duration: 300, symbol: '⚡', color: '#FFD700' },
-            doubleGun: { name: '2x Gun', duration: 300, symbol: '💥', color: '#FF69B4' },
-            invincibility: { name: 'Shield', duration: 400, symbol: '🛡️', color: '#00FFFF' },
+            doubleBullet: { name: '2x Bullet', duration: 600, symbol: '⚡', color: '#FFD700' },
+            doubleGun: { name: '2x Gun', duration: 600, symbol: '💥', color: '#FF69B4' },
+            invincibility: { name: 'Shield', duration: 600, symbol: '🛡️', color: '#00FFFF' },
             healthRecover: { name: '+Health', duration: 0, symbol: '❤️', color: '#FF6B6B' },
-            slowMotion: { name: 'Slow', duration: 300, symbol: '🐢', color: '#9D4EDD' },
-            gunRage: { name: 'Rage', duration: 300, symbol: '🔥', color: '#FF4500' }
+            slowMotion: { name: 'Slow', duration: 600, symbol: '🐢', color: '#9D4EDD' },
+            gunRage: { name: 'Rage', duration: 600, symbol: '🔥', color: '#FF4500' }
         };
 
         // Player active effects
@@ -727,17 +727,14 @@
             const type = types[Math.floor(Math.random() * types.length)];
             const x = Math.random() * (canvas.width - powerupRadius * 2) + powerupRadius;
             
-            const newPowerup = {
+            powerups.push({
                 x: x,
-                y: -powerupRadius,
+                y: -powerupRadius * 2,
                 type: type,
                 vx: 0,
-                vy: 2,
+                vy: 2.5,
                 radius: powerupRadius
-            };
-            
-            powerups.push(newPowerup);
-            console.log('Power-up spawned:', type, 'Total powerups:', powerups.length);
+            });
         }
 
         function updatePlayer() {
@@ -830,22 +827,22 @@
             
             switch(type) {
                 case 'doubleBullet':
-                    player_effects.doubleBullet = powerupInfo.duration;
+                    player_effects.doubleBullet += powerupInfo.duration;
                     break;
                 case 'doubleGun':
-                    player_effects.doubleGun = powerupInfo.duration;
+                    player_effects.doubleGun += powerupInfo.duration;
                     break;
                 case 'invincibility':
-                    player_effects.invincibility = powerupInfo.duration;
+                    player_effects.invincibility += powerupInfo.duration;
                     break;
                 case 'healthRecover':
                     player.health = Math.min(player.maxHealth, player.health + 50);
                     break;
                 case 'slowMotion':
-                    player_effects.slowMotion = powerupInfo.duration;
+                    player_effects.slowMotion += powerupInfo.duration;
                     break;
                 case 'gunRage':
-                    player_effects.gunRage = powerupInfo.duration;
+                    player_effects.gunRage += powerupInfo.duration;
                     break;
             }
         }
@@ -976,51 +973,68 @@
         }
 
         function drawPowerups() {
-            if (powerups.length > 0) {
-                console.log('Drawing', powerups.length, 'power-ups');
-            }
+            ctx.globalAlpha = 1;
             
-            for (let powerup of powerups) {
+            for (let i = 0; i < powerups.length; i++) {
+                const powerup = powerups[i];
                 const info = POWERUP_TYPES[powerup.type];
-                if (!info) {
-                    console.error('Unknown powerup type:', powerup.type);
-                    continue;
+                if (!info) continue;
+                
+                // Check if any other power-ups are overlapping
+                let overlappingCount = 0;
+                for (let j = 0; j < powerups.length; j++) {
+                    if (i !== j) {
+                        const dx = powerup.x - powerups[j].x;
+                        const dy = powerup.y - powerups[j].y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        if (distance < powerup.radius * 2.5) {
+                            overlappingCount++;
+                        }
+                    }
                 }
                 
-                // Draw circle
+                // Draw glow if overlapping with other power-ups
+                if (overlappingCount > 0) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.beginPath();
+                    ctx.arc(powerup.x, powerup.y, powerup.radius + 10, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // Draw outer circle with color
                 ctx.fillStyle = info.color;
-                ctx.globalAlpha = 0.8;
                 ctx.beginPath();
                 ctx.arc(powerup.x, powerup.y, powerup.radius, 0, Math.PI * 2);
                 ctx.fill();
                 
                 // Draw border
                 ctx.strokeStyle = '#ffffff';
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 3;
                 ctx.stroke();
-                ctx.globalAlpha = 1;
                 
-                // Draw text background for better visibility
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-                ctx.font = 'bold 12px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                const textWidth = ctx.measureText(info.name).width + 6;
-                ctx.fillRect(powerup.x - textWidth / 2, powerup.y - 10, textWidth, 16);
+                // Draw inner circle with darker shade
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                ctx.beginPath();
+                ctx.arc(powerup.x, powerup.y, powerup.radius * 0.8, 0, Math.PI * 2);
+                ctx.fill();
                 
-                // Draw power-up name
+                // Draw power-up name in the center
                 ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 12px Arial';
+                ctx.font = 'bold 10px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(info.name, powerup.x, powerup.y - 2);
+                ctx.fillText(info.name, powerup.x, powerup.y - 5);
                 
-                // Draw symbol on the circle
-                ctx.fillStyle = '#ffffff';
-                ctx.font = '20px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(info.symbol, powerup.x, powerup.y + 8);
+                // Draw symbol below name
+                ctx.font = '14px Arial';
+                ctx.fillText(info.symbol, powerup.x, powerup.y + 7);
+                
+                // Show overlap count if overlapping
+                if (overlappingCount > 0) {
+                    ctx.fillStyle = '#FFD700';
+                    ctx.font = 'bold 12px Arial';
+                    ctx.fillText(`+${overlappingCount}`, powerup.x, powerup.y - 18);
+                }
             }
         }
 
@@ -1031,27 +1045,32 @@
             ctx.fillStyle = '#FFD700';
             
             if (player_effects.doubleBullet > 0) {
-                ctx.fillText(`2x Bullet: ${Math.ceil(player_effects.doubleBullet / 60)}s`, 10, yOffset);
+                const stackCount = Math.ceil(player_effects.doubleBullet / 600);
+                ctx.fillText(`2x Bullet: ${Math.ceil(player_effects.doubleBullet / 60)}s (x${stackCount})`, 10, yOffset);
                 yOffset += 20;
             }
             if (player_effects.doubleGun > 0) {
                 ctx.fillStyle = '#FF69B4';
-                ctx.fillText(`2x Gun: ${Math.ceil(player_effects.doubleGun / 60)}s`, 10, yOffset);
+                const stackCount = Math.ceil(player_effects.doubleGun / 600);
+                ctx.fillText(`2x Gun: ${Math.ceil(player_effects.doubleGun / 60)}s (x${stackCount})`, 10, yOffset);
                 yOffset += 20;
             }
             if (player_effects.invincibility > 0) {
                 ctx.fillStyle = '#00FFFF';
-                ctx.fillText(`Shield: ${Math.ceil(player_effects.invincibility / 60)}s`, 10, yOffset);
+                const stackCount = Math.ceil(player_effects.invincibility / 600);
+                ctx.fillText(`Shield: ${Math.ceil(player_effects.invincibility / 60)}s (x${stackCount})`, 10, yOffset);
                 yOffset += 20;
             }
             if (player_effects.slowMotion > 0) {
                 ctx.fillStyle = '#9D4EDD';
-                ctx.fillText(`Slow: ${Math.ceil(player_effects.slowMotion / 60)}s`, 10, yOffset);
+                const stackCount = Math.ceil(player_effects.slowMotion / 600);
+                ctx.fillText(`Slow: ${Math.ceil(player_effects.slowMotion / 60)}s (x${stackCount})`, 10, yOffset);
                 yOffset += 20;
             }
             if (player_effects.gunRage > 0) {
                 ctx.fillStyle = '#FF4500';
-                ctx.fillText(`Rage: ${Math.ceil(player_effects.gunRage / 60)}s`, 10, yOffset);
+                const stackCount = Math.ceil(player_effects.gunRage / 600);
+                ctx.fillText(`Rage: ${Math.ceil(player_effects.gunRage / 60)}s (x${stackCount})`, 10, yOffset);
                 yOffset += 20;
             }
         }
