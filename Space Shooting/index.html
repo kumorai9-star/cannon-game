@@ -463,7 +463,8 @@
         // Power-ups
         let powerups = [];
         const powerupRadius = 15;
-        const powerupSpawnRate = 0.005;
+        let powerupSpawnTimer = 0;
+        const powerupSpawnInterval = 120; // Spawn a power-up every 2 seconds (120 frames at 60fps)
 
         // Power-up types with properties
         const POWERUP_TYPES = {
@@ -603,6 +604,7 @@
             
             // Reset power-ups and effects
             powerups = [];
+            powerupSpawnTimer = 0;
             for (let effect in player_effects) {
                 player_effects[effect] = 0;
             }
@@ -630,6 +632,7 @@
             enemies = [];
             enemyBullets = [];
             powerups = [];
+            powerupSpawnTimer = 0;
             player.health = player.maxHealth;
             player.x = 400 - 20;  // Canvas is 800 wide, center it
             player.y = 550;  // Near bottom (600 - 50)
@@ -1105,9 +1108,11 @@
                     spawnEnemy();
                 }
 
-                // Spawn power-ups
-                if (Math.random() < powerupSpawnRate) {
+                // Spawn power-ups with timer
+                powerupSpawnTimer++;
+                if (powerupSpawnTimer >= powerupSpawnInterval) {
                     spawnPowerup();
+                    powerupSpawnTimer = 0;
                 }
 
                 updateUI();
