@@ -43,9 +43,10 @@
 
         .game-container {
             position: relative;
-            width: min(100%, 900px);
-            max-width: 100%;
-            max-height: min(100vh, calc(100vw * 0.75));
+            width: min(100%, calc(100vh * 4 / 3));
+            height: min(100vh, calc(100vw * 3 / 4));
+            max-width: 900px;
+            max-height: 100vh;
             aspect-ratio: 4 / 3;
             background: linear-gradient(to bottom, #0f3460, #16213e);
             border: 3px solid #00d4ff;
@@ -459,6 +460,30 @@
         let enemies = [];
         let enemyBullets = [];
 
+        // Power-ups
+        let powerups = [];
+        const powerupRadius = 15;
+        const powerupSpawnRate = 0.005;
+
+        // Power-up types with properties
+        const POWERUP_TYPES = {
+            doubleBullet: { name: '2x Bullet', duration: 300, symbol: '⚡', color: '#FFD700' },
+            doubleGun: { name: '2x Gun', duration: 300, symbol: '💥', color: '#FF69B4' },
+            invincibility: { name: 'Shield', duration: 400, symbol: '🛡️', color: '#00FFFF' },
+            healthRecover: { name: '+Health', duration: 0, symbol: '❤️', color: '#FF6B6B' },
+            slowMotion: { name: 'Slow', duration: 300, symbol: '🐢', color: '#9D4EDD' },
+            gunRage: { name: 'Rage', duration: 300, symbol: '🔥', color: '#FF4500' }
+        };
+
+        // Player active effects
+        const player_effects = {
+            doubleBullet: 0,
+            doubleGun: 0,
+            invincibility: 0,
+            slowMotion: 0,
+            gunRage: 0
+        };
+
         // Game variables
         let score = 0;
         let level = 1;
@@ -576,6 +601,12 @@
             gameState = 'playing';
             document.getElementById('startScreen').classList.add('hidden');
             
+            // Reset power-ups and effects
+            powerups = [];
+            for (let effect in player_effects) {
+                player_effects[effect] = 0;
+            }
+            
             // Adjust difficulty
             if (difficulty === 'easy') {
                 player.maxHealth = 150;
@@ -598,11 +629,17 @@
             bullets = [];
             enemies = [];
             enemyBullets = [];
+            powerups = [];
             player.health = player.maxHealth;
             player.x = 400 - 20;  // Canvas is 800 wide, center it
             player.y = 550;  // Near bottom (600 - 50)
             player.vx = 0;
             enemySpawnRate = 0.02;
+
+            // Reset active effects
+            for (let effect in player_effects) {
+                player_effects[effect] = 0;
+            }
 
             gameState = 'start';
             document.getElementById('gameOverScreen').classList.add('hidden');
@@ -621,12 +658,36 @@
 
         function shoot() {
             if (gameState !== 'playing') return;
+            
+            const bulletDamage = player_effects.gunRage > 0 ? 2 : 1;
+            const bulletSpd = bulletSpeed * (1 + (player_effects.gunRage > 0 ? 0.3 : 0));
+            
+            // Normal shot
             bullets.push({
                 x: player.x + player.width * 0.75 + 4 - bulletSize / 2,
                 y: player.y - bulletSize * 2,
                 vx: 0,
-                vy: -bulletSpeed
+                vy: -bulletSpd,
+                damage: bulletDamage
             });
+
+            // Double gun effect - shoot from two sides
+            if (player_effects.doubleGun > 0) {
+                bullets.push({
+                    x: player.x + player.width * 0.25 - bulletSize / 2,
+                    y: player.y - bulletSize * 2,
+                    vx: -1.5,
+                    vy: -bulletSpd,
+                    damage: bulletDamage
+                });
+                bullets.push({
+                    x: player.x + player.width - bulletSize / 2,
+                    y: player.y - bulletSize * 2,
+                    vx: 1.5,
+                    vy: -bulletSpd,
+                    damage: bulletDamage
+                });
+            }
         }
 
         function spawnEnemy() {
@@ -658,6 +719,21 @@
             }
         }
 
+        function spawnPowerup() {
+            const types = Object.keys(POWERUP_TYPES);
+            const type = types[Math.floor(Math.random() * types.length)];
+            const x = Math.random() * (canvas.width - powerupRadius * 2) + powerupRadius;
+            
+            powerups.push({
+                x: x,
+                y: -powerupRadius,
+                type: type,
+                vx: 0,
+                vy: 2,
+                radius: powerupRadius
+            });
+        }
+
         function updatePlayer() {
             player.vx = 0;
 
@@ -687,9 +763,11 @@
         }
 
         function updateEnemies() {
+            const slowMotionMultiplier = player_effects.slowMotion > 0 ? 0.4 : 1;
+            
             for (let i = enemies.length - 1; i >= 0; i--) {
-                enemies[i].x += enemies[i].vx;
-                enemies[i].y += enemies[i].vy;
+                enemies[i].x += enemies[i].vx * slowMotionMultiplier;
+                enemies[i].y += enemies[i].vy * slowMotionMultiplier;
                 enemies[i].shootCooldown--;
 
                 // Enemy shoots
@@ -698,7 +776,7 @@
                         x: enemies[i].x + enemies[i].width / 2,
                         y: enemies[i].y + enemies[i].height,
                         vx: (Math.random() - 0.5) * 2,
-                        vy: 3 + level * 0.5
+                        vy: (3 + level * 0.5) * slowMotionMultiplier
                     });
                     enemies[i].shootCooldown = Math.random() * 60 + 40;
                 }
@@ -722,6 +800,50 @@
             }
         }
 
+        function updatePowerups() {
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                powerups[i].x += powerups[i].vx;
+                powerups[i].y += powerups[i].vy;
+
+                if (powerups[i].y > canvas.height) {
+                    powerups.splice(i, 1);
+                }
+            }
+        }
+
+        function updateActiveEffects() {
+            for (let effect in player_effects) {
+                if (player_effects[effect] > 0) {
+                    player_effects[effect]--;
+                }
+            }
+        }
+
+        function activatePowerup(type) {
+            const powerupInfo = POWERUP_TYPES[type];
+            
+            switch(type) {
+                case 'doubleBullet':
+                    player_effects.doubleBullet = powerupInfo.duration;
+                    break;
+                case 'doubleGun':
+                    player_effects.doubleGun = powerupInfo.duration;
+                    break;
+                case 'invincibility':
+                    player_effects.invincibility = powerupInfo.duration;
+                    break;
+                case 'healthRecover':
+                    player.health = Math.min(player.maxHealth, player.health + 50);
+                    break;
+                case 'slowMotion':
+                    player_effects.slowMotion = powerupInfo.duration;
+                    break;
+                case 'gunRage':
+                    player_effects.gunRage = powerupInfo.duration;
+                    break;
+            }
+        }
+
         function checkCollisions() {
             // Bullet-Enemy collisions
             for (let i = bullets.length - 1; i >= 0; i--) {
@@ -732,8 +854,8 @@
                         bullets[i].y < enemies[j].y + enemies[j].height &&
                         bullets[i].y + bulletSize > enemies[j].y
                     ) {
-                        bullets.splice(i, 1);
-                        enemies[j].health--;
+                        const bulletDmg = bullets[i].damage || 1;
+                        enemies[j].health -= bulletDmg;
 
                         if (enemies[j].type === 'normal') {
                             score += 10;
@@ -744,6 +866,7 @@
                         if (enemies[j].health <= 0) {
                             enemies.splice(j, 1);
                         }
+                        bullets.splice(i, 1);
                         break;
                     }
                 }
@@ -758,7 +881,9 @@
                     enemyBullets[i].y + bulletSize > player.y
                 ) {
                     enemyBullets.splice(i, 1);
-                    player.health -= 5;
+                    if (player_effects.invincibility <= 0) {
+                        player.health -= 5;
+                    }
                 }
             }
 
@@ -771,7 +896,21 @@
                     player.y + player.height > enemies[i].y
                 ) {
                     enemies.splice(i, 1);
-                    player.health -= 15;
+                    if (player_effects.invincibility <= 0) {
+                        player.health -= 15;
+                    }
+                }
+            }
+
+            // Power-up-Player collisions
+            for (let i = powerups.length - 1; i >= 0; i--) {
+                const dx = (player.x + player.width / 2) - powerups[i].x;
+                const dy = (player.y + player.height / 2) - powerups[i].y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < player.width / 2 + powerups[i].radius) {
+                    activatePowerup(powerups[i].type);
+                    powerups.splice(i, 1);
                 }
             }
         }
@@ -821,6 +960,70 @@
             ctx.fillStyle = '#ff0000';
             for (let bullet of enemyBullets) {
                 ctx.fillRect(bullet.x - bulletSize / 2, bullet.y, bulletSize, bulletSize * 1.5);
+            }
+
+            // Draw power-ups
+            drawPowerups();
+
+            // Draw active effects indicator
+            drawActiveEffects();
+        }
+
+        function drawPowerups() {
+            for (let powerup of powerups) {
+                const info = POWERUP_TYPES[powerup.type];
+                
+                // Draw circle
+                ctx.fillStyle = info.color;
+                ctx.globalAlpha = 0.8;
+                ctx.beginPath();
+                ctx.arc(powerup.x, powerup.y, powerup.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Draw border
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+                
+                // Draw symbol/text
+                ctx.fillStyle = '#000000';
+                ctx.font = 'bold 16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(info.symbol, powerup.x, powerup.y);
+            }
+        }
+
+        function drawActiveEffects() {
+            let yOffset = 50;
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#FFD700';
+            
+            if (player_effects.doubleBullet > 0) {
+                ctx.fillText(`2x Bullet: ${Math.ceil(player_effects.doubleBullet / 60)}s`, 10, yOffset);
+                yOffset += 20;
+            }
+            if (player_effects.doubleGun > 0) {
+                ctx.fillStyle = '#FF69B4';
+                ctx.fillText(`2x Gun: ${Math.ceil(player_effects.doubleGun / 60)}s`, 10, yOffset);
+                yOffset += 20;
+            }
+            if (player_effects.invincibility > 0) {
+                ctx.fillStyle = '#00FFFF';
+                ctx.fillText(`Shield: ${Math.ceil(player_effects.invincibility / 60)}s`, 10, yOffset);
+                yOffset += 20;
+            }
+            if (player_effects.slowMotion > 0) {
+                ctx.fillStyle = '#9D4EDD';
+                ctx.fillText(`Slow: ${Math.ceil(player_effects.slowMotion / 60)}s`, 10, yOffset);
+                yOffset += 20;
+            }
+            if (player_effects.gunRage > 0) {
+                ctx.fillStyle = '#FF4500';
+                ctx.fillText(`Rage: ${Math.ceil(player_effects.gunRage / 60)}s`, 10, yOffset);
+                yOffset += 20;
             }
         }
 
@@ -892,12 +1095,19 @@
                 updateBullets();
                 updateEnemies();
                 updateEnemyBullets();
+                updatePowerups();
+                updateActiveEffects();
                 checkCollisions();
                 updateLevel();
 
                 // Spawn enemies
                 if (Math.random() < enemySpawnRate) {
                     spawnEnemy();
+                }
+
+                // Spawn power-ups
+                if (Math.random() < powerupSpawnRate) {
+                    spawnPowerup();
                 }
 
                 updateUI();
