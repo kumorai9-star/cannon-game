@@ -604,7 +604,7 @@
             
             // Reset power-ups and effects
             powerups = [];
-            powerupSpawnTimer = 0;
+            powerupSpawnTimer = powerupSpawnInterval;
             for (let effect in player_effects) {
                 player_effects[effect] = 0;
             }
@@ -1153,9 +1153,9 @@
                     spawnEnemy();
                 }
 
-                // Spawn power-ups with timer
+                // Spawn power-ups with timer, only when no power-up is currently active
                 powerupSpawnTimer++;
-                if (powerupSpawnTimer >= powerupSpawnInterval) {
+                if (powerupSpawnTimer >= powerupSpawnInterval && powerups.length === 0) {
                     spawnPowerup();
                     powerupSpawnTimer = 0;
                 }
