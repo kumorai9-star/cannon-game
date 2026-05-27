@@ -91,6 +91,9 @@
             align-items: flex-end;
             z-index: 20;
             gap: 15px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 18px;
         }
 
         .mobile-controls.active {
@@ -357,18 +360,6 @@
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
 
-        function updateMobileControlVisibility() {
-            const mobileControls = document.getElementById('mobileControls');
-            if (isMobile || window.innerWidth <= 768) {
-                mobileControls.classList.add('active');
-            } else {
-                mobileControls.classList.remove('active');
-            }
-        }
-
-        updateMobileControlVisibility();
-        window.addEventListener('resize', updateMobileControlVisibility);
-
         // Game states
         let gameState = 'start'; // start, playing, gameOver
         let difficulty = 'normal';
@@ -529,7 +520,6 @@
             }
             
             player.health = player.maxHealth;
-            setupMobileControls();
             updateUI();
             gameLoop();
         }
@@ -566,8 +556,8 @@
         function shoot() {
             if (gameState !== 'playing') return;
             bullets.push({
-                x: player.x + player.width / 2 - bulletSize / 2,
-                y: player.y,
+                x: player.x + player.width * 0.75 + 4 - bulletSize / 2,
+                y: player.y - bulletSize * 2,
                 vx: 0,
                 vy: -bulletSpeed
             });
@@ -769,19 +759,54 @@
         }
 
         function drawPlayer() {
-            ctx.fillStyle = '#00ccff';
-            
-            // Ship body
+            const x = player.x;
+            const y = player.y;
+            const w = player.width;
+            const h = player.height;
+            const receiverHeight = 12;
+            const barrelWidth = 10;
+            const barrelHeight = h * 0.8;
+            const barrelX = x + w * 0.7;
+            const barrelY = y - barrelHeight + 4;
+
+            // Main receiver
+            ctx.fillStyle = '#444';
+            ctx.fillRect(x, y + h * 0.5, w, receiverHeight);
+
+            // Stock
             ctx.beginPath();
-            ctx.moveTo(player.x + player.width / 2, player.y);
-            ctx.lineTo(player.x + player.width, player.y + player.height);
-            ctx.lineTo(player.x, player.y + player.height);
+            ctx.moveTo(x, y + h * 0.55);
+            ctx.lineTo(x - 18, y + h * 0.5);
+            ctx.lineTo(x - 10, y + h);
+            ctx.lineTo(x, y + h);
             ctx.closePath();
             ctx.fill();
 
-            // Ship window
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(player.x + player.width / 4, player.y + 8, player.width / 2, 8);
+            // Barrel (vertical)
+            ctx.fillStyle = '#222';
+            ctx.fillRect(barrelX, barrelY, barrelWidth, barrelHeight);
+
+            // Muzzle accent
+            ctx.fillStyle = '#ffbc42';
+            ctx.fillRect(barrelX, barrelY - 6, barrelWidth, 6);
+
+            // Magazine
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.25, y + h * 0.55);
+            ctx.lineTo(x + w * 0.55, y + h * 0.55);
+            ctx.lineTo(x + w * 0.6, y + h * 0.95);
+            ctx.lineTo(x + w * 0.2, y + h * 0.95);
+            ctx.closePath();
+            ctx.fill();
+
+            // Grip
+            ctx.fillStyle = '#2a2a2a';
+            ctx.fillRect(x + w * 0.45, y + h * 0.52, 6, h * 0.3);
+
+            // Rail
+            ctx.fillStyle = '#555';
+            ctx.fillRect(x + w * 0.6, y + h * 0.35, w * 0.25, 4);
         }
 
         function drawStars() {
@@ -825,7 +850,8 @@
             }
         }
 
-        // Initial draw
+        // Initialize mobile controls and draw
+        setupMobileControls();
         draw();
     </script>
 </body>
