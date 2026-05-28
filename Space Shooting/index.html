@@ -404,10 +404,23 @@
                 <p>Destroy enemies and avoid their fire</p>
             </div>
 
+            <div class="instructions" style="max-width:420px;">
+                <label style="display:block; margin-bottom:8px; color:#fff; font-size:16px;"><strong>Enter your name:</strong></label>
+                <input
+                    id="playerNameInput"
+                    type="text"
+                    maxlength="20"
+                    placeholder="Your name"
+                    style="width: min(320px, 100%); padding: 12px 14px; font-size: 16px; border-radius: 6px; border: 2px solid #00d4ff; background: rgba(0,0,0,0.35); color: #fff; outline: none;"
+                />
+                <div style="margin-top:8px; color:#aaa; font-size:12px;">Name is saved with your score when the game ends.</div>
+            </div>
+
+
             <div class="instructions" id="leaderboardPanel">
                 <h3 style="color:#00d4ff; margin-bottom:8px;">Local Highscores</h3>
                 <ol id="leaderboardStart" style="text-align:left; color:#fff; margin:0; padding-left:20px;"></ol>
-                <button class="restart-button" style="margin-top:10px;" onclick="clearHighscores()">Clear Highscores</button>
+
             </div>
 
             <div class="difficulty-selector">
@@ -429,6 +442,11 @@
                     <h3 style="color:#00d4ff; margin-bottom:8px;">Local Highscores</h3>
                     <ol id="leaderboardGameOver" style="text-align:left; color:#fff; margin:0; padding-left:20px;"></ol>
                 </div>
+                <div class="instructions" style="max-width:420px; margin-top:0;">
+                    <div style="color:#ddd; font-size:14px; margin-top:4px;">Saved as: <strong><span id="savedPlayerName">&mdash;</span></strong></div>
+                    <div style="color:#aaa; font-size:12px;">When you click START GAME, your name is recorded along with your score and date.</div>
+                </div>
+
                 <button class="restart-button" onclick="restartGame()">PLAY AGAIN</button>
         </div>
         <div class="pause-screen hidden" id="pauseScreen">
@@ -660,9 +678,29 @@
             });
         }
 
+        let playerName = 'Player';
+
+        function getPlayerName() {
+            const input = document.getElementById('playerNameInput');
+            if (!input) return 'Player';
+            const raw = (input.value || '').trim();
+            return raw.length ? raw.slice(0, 20) : '';
+        }
+
         function startGame() {
+            playerName = getPlayerName();
+            if (!playerName) {
+                alert('Please enter your name to start the game.');
+                return;
+            }
+
+            // Show saved name in the game-over screen after death
+            const savedNameEl = document.getElementById('savedPlayerName');
+            if (savedNameEl) savedNameEl.textContent = playerName;
+
             difficulty = document.querySelector('input[name="difficulty"]:checked').value;
             gameState = 'playing';
+
             document.getElementById('startScreen').classList.add('hidden');
             
             // Reset power-ups and effects
@@ -689,6 +727,7 @@
             updateUI();
             gameLoop();
         }
+
 
         function restartGame() {
             // Reset game state
@@ -1368,10 +1407,15 @@
             }
         }
 
-        function saveHighscore(score) {
+        function saveHighscore(name, score) {
             const hs = getHighscores();
-            hs.push({ score: score, date: new Date().toISOString() });
-            hs.sort((a, b) => b.score - a.score);
+            const entry = {
+                name: name || 'Player',
+                score: score,
+                date: new Date().toISOString()
+            };
+            hs.push(entry);
+            hs.sort((a, b) => (b.score || 0) - (a.score || 0));
             hs.splice(5); // keep top 5
             localStorage.setItem('space_shooter_highscores', JSON.stringify(hs));
         }
@@ -1386,16 +1430,21 @@
                     el.innerHTML = '<li style="color:#aaa;">No highscores yet</li>';
                     return;
                 }
-                el.innerHTML = hs.map((s, i) => `<li><strong>#${i+1}</strong> ${s.score} <span style="color:#aaa; font-size:12px;">(${new Date(s.date).toLocaleString()})</span></li>`).join('');
+                el.innerHTML = hs
+                    .map((s, i) => {
+                        const name = s && s.name ? s.name : 'Unknown';
+                        const scoreVal = s && typeof s.score === 'number' ? s.score : (s.score || 0);
+                        const dateStr = s && s.date ? new Date(s.date).toLocaleString() : '';
+                        return `<li><strong>#${i + 1}</strong> ${name} - ${scoreVal} <span style="color:#aaa; font-size:12px;">${dateStr ? '(' + dateStr + ')' : ''}</span></li>`;
+                    })
+                    .join('');
             };
             makeList(startEl);
             makeList(gameEl);
         }
 
-        function clearHighscores() {
-            localStorage.removeItem('space_shooter_highscores');
-            renderHighscores();
-        }
+
+
 
         function drawActiveEffectIcons() {
             const activeKeys = Object.keys(player_effects).filter(key => player_effects[key] > 0);
@@ -1548,8 +1597,9 @@
                         document.getElementById('finalScore').textContent = score;
                         document.getElementById('finalLevel').textContent = level;
                         // Save and render leaderboard
-                        saveHighscore(score);
+                        saveHighscore(playerName, score);
                         renderHighscores();
+
                         document.getElementById('gameOverScreen').classList.remove('hidden');
                         return;
                     }
