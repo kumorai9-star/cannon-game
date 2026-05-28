@@ -277,6 +277,11 @@
             display: none;
         }
 
+        /* Generic hidden helper */
+        .hidden {
+            display: none !important;
+        }
+
         .screen-title {
             font-size: 48px;
             margin-bottom: 30px;
@@ -345,6 +350,25 @@
         .pulse {
             animation: pulse 1s infinite;
         }
+        .pause-screen {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0,0,0,0.6);
+            z-index: 30;
+            gap: 12px;
+        }
+        .pause-screen .screen-title {
+            font-size: 32px;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+        .pause-screen .pause-controls button {
+            margin: 6px;
+        }
     </style>
 </head>
 <body>
@@ -356,6 +380,7 @@
                 <div class="ui-item">Score: <span id="score">0</span></div>
                 <div class="ui-item">Level: <span id="level">1</span></div>
                 <div class="ui-item">Health: <span id="health">100</span></div>
+                <div class="ui-item"><button onclick="pauseGame()">Pause</button></div>
             </div>
 
             <!-- Mobile Controls -->
@@ -379,6 +404,12 @@
                 <p>Destroy enemies and avoid their fire</p>
             </div>
 
+            <div class="instructions" id="leaderboardPanel">
+                <h3 style="color:#00d4ff; margin-bottom:8px;">Local Highscores</h3>
+                <ol id="leaderboardStart" style="text-align:left; color:#fff; margin:0; padding-left:20px;"></ol>
+                <button class="restart-button" style="margin-top:10px;" onclick="clearHighscores()">Clear Highscores</button>
+            </div>
+
             <div class="difficulty-selector">
                 <label><input type="radio" name="difficulty" value="easy" checked> Easy</label>
                 <label><input type="radio" name="difficulty" value="normal"> Normal</label>
@@ -394,7 +425,19 @@
                 <p>Final Score: <span id="finalScore">0</span></p>
                 <p>Level Reached: <span id="finalLevel">1</span></p>
             </div>
-            <button class="restart-button" onclick="restartGame()">PLAY AGAIN</button>
+                <div class="instructions" style="max-width:420px;">
+                    <h3 style="color:#00d4ff; margin-bottom:8px;">Local Highscores</h3>
+                    <ol id="leaderboardGameOver" style="text-align:left; color:#fff; margin:0; padding-left:20px;"></ol>
+                </div>
+                <button class="restart-button" onclick="restartGame()">PLAY AGAIN</button>
+        </div>
+        <div class="pause-screen hidden" id="pauseScreen">
+            <div class="screen-title">PAUSED</div>
+            <div class="pause-controls">
+                <button class="start-button" onclick="resumeGame()">RESUME</button>
+                <button class="start-button" onclick="openSettings()">SETTINGS</button>
+                <button class="restart-button" onclick="quitToMenu()">QUIT</button>
+            </div>
         </div>
         </div>
     </div>
@@ -432,11 +475,15 @@
         // Game states
         let gameState = 'start'; // start, playing, gameOver
         let difficulty = 'normal';
+        // Boss state
+        let boss = null;
+        let bossSpawnCount = 0;
 
         // Mobile controls state
         const mobileControlsState = {
             leftPressed: false,
-            rightPressed: false
+            rightPressed: false,
+            shootPressed: false
         };
 
         // Player
@@ -448,8 +495,14 @@
             speed: 6,
             health: 100,
             maxHealth: 100,
-            vx: 0
+            vx: 0,
+            // shooting cooldown (frames) and base rate
+            fireCooldown: 0,
+            baseFireRate: 14,
+            reviveCount: 0
         };
+
+        
 
         // Bullets
         let bullets = [];
@@ -473,7 +526,9 @@
             invincibility: { name: 'Shield', duration: 600, symbol: '🛡️', color: '#00FFFF' },
             healthRecover: { name: '+Health', duration: 0, symbol: '❤️', color: '#FF6B6B' },
             slowMotion: { name: 'Slow', duration: 600, symbol: '🐢', color: '#9D4EDD' },
-            gunRage: { name: 'Rage', duration: 600, symbol: '🔥', color: '#FF4500' }
+            gunRage: { name: 'Rage', duration: 600, symbol: '🔥', color: '#FF4500' },
+            doublePoints: { name: '2x Points', duration: 600, symbol: '✦', color: '#7CFC00' },
+            revive: { name: 'Revive', duration: 0, symbol: '⛑️', color: '#8A2BE2' }
         };
 
         // Player active effects
@@ -482,7 +537,8 @@
             doubleGun: 0,
             invincibility: 0,
             slowMotion: 0,
-            gunRage: 0
+            gunRage: 0,
+            doublePoints: 0
         };
 
         // Game variables
@@ -503,6 +559,7 @@
         window.addEventListener('keyup', (e) => {
             keys[e.key] = false;
         });
+        // Pause toggle via UI only (keyboard toggle removed)
 
         // Mobile Controls Setup
         function setupMobileControls() {
@@ -574,25 +631,31 @@
             // Shoot button
             shootBtn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
+                mobileControlsState.shootPressed = true;
                 shoot();
                 shootBtn.classList.add('pressed');
             });
             shootBtn.addEventListener('touchend', (e) => {
                 e.preventDefault();
+                mobileControlsState.shootPressed = false;
                 shootBtn.classList.remove('pressed');
             });
             shootBtn.addEventListener('touchcancel', (e) => {
                 e.preventDefault();
+                mobileControlsState.shootPressed = false;
                 shootBtn.classList.remove('pressed');
             });
             shootBtn.addEventListener('mousedown', () => {
+                mobileControlsState.shootPressed = true;
                 shoot();
                 shootBtn.classList.add('pressed');
             });
             shootBtn.addEventListener('mouseup', () => {
+                mobileControlsState.shootPressed = false;
                 shootBtn.classList.remove('pressed');
             });
             shootBtn.addEventListener('mouseleave', () => {
+                mobileControlsState.shootPressed = false;
                 shootBtn.classList.remove('pressed');
             });
         }
@@ -619,6 +682,10 @@
             }
             
             player.health = player.maxHealth;
+            player.fireCooldown = 0;
+            player.reviveCount = 0;
+            boss = null;
+            bossSpawnCount = 0;
             updateUI();
             gameLoop();
         }
@@ -637,6 +704,10 @@
             player.x = 400 - 20;  // Canvas is 800 wide, center it
             player.y = 550;  // Near bottom (600 - 50)
             player.vx = 0;
+            player.fireCooldown = 0;
+            player.reviveCount = 0;
+            boss = null;
+            bossSpawnCount = 0;
             enemySpawnRate = 0.02;
 
             // Reset active effects
@@ -661,36 +732,57 @@
 
         function shoot() {
             if (gameState !== 'playing') return;
-            
+
+            // Respect cooldown
+            if (player.fireCooldown > 0) return;
+
+            // Determine fire rate (cooldown) and shot properties
+            const rageMultiplier = player_effects.gunRage > 0 ? 0.25 : 1;
+            const newCooldown = Math.max(2, Math.floor(player.baseFireRate * rageMultiplier));
+            player.fireCooldown = newCooldown;
+
             const bulletDamage = player_effects.gunRage > 0 ? 2 : 1;
             const bulletSpd = bulletSpeed * (1 + (player_effects.gunRage > 0 ? 0.3 : 0));
-            
-            // Normal shot
-            bullets.push({
-                x: player.x + player.width * 0.75 + 4 - bulletSize / 2,
-                y: player.y - bulletSize * 2,
-                vx: 0,
-                vy: -bulletSpd,
-                damage: bulletDamage
-            });
+            const centerX = player.x + player.width * 0.75 + 4 - bulletSize / 2;
+            const baseY = player.y - bulletSize * 2;
 
-            // Double gun effect - shoot from two sides
-            if (player_effects.doubleGun > 0) {
+            const shotOffsets = [{ xOffset: 0, vx: 0 }];
+            if (player_effects.doubleBullet > 0) {
+                shotOffsets.push({ xOffset: -14, vx: -1 });
+                shotOffsets.push({ xOffset: 14, vx: 1 });
+            }
+
+            for (let shot of shotOffsets) {
                 bullets.push({
-                    x: player.x + player.width * 0.25 - bulletSize / 2,
-                    y: player.y - bulletSize * 2,
-                    vx: -1.5,
-                    vy: -bulletSpd,
-                    damage: bulletDamage
-                });
-                bullets.push({
-                    x: player.x + player.width - bulletSize / 2,
-                    y: player.y - bulletSize * 2,
-                    vx: 1.5,
+                    x: centerX + shot.xOffset,
+                    y: baseY,
+                    vx: shot.vx,
                     vy: -bulletSpd,
                     damage: bulletDamage
                 });
             }
+
+            if (player_effects.doubleGun > 0) {
+                const cloneBaseX = getCloneGunX();
+                for (let shot of shotOffsets) {
+                    bullets.push({
+                        x: cloneBaseX + shot.xOffset,
+                        y: baseY,
+                        vx: shot.vx,
+                        vy: -bulletSpd,
+                        damage: bulletDamage
+                    });
+                }
+            }
+        }
+
+        function getCloneGunX() {
+            const rightCandidate = player.x + player.width + 70;
+            const leftCandidate = player.x - 70;
+            if (rightCandidate + player.width < canvas.width) {
+                return rightCandidate;
+            }
+            return Math.max(player.width, leftCandidate);
         }
 
         function spawnEnemy() {
@@ -698,10 +790,13 @@
             const height = 35;
             const x = Math.random() * (canvas.width - width);
             const y = -height;
-
-            let speedMultiplier = 1 + (level - 1) * 0.3;
+            // Make enemies move slower at higher levels (3% per level), floor at 30% of base
+            let speedMultiplier = Math.max(0.3, 1 - (level - 1) * 0.03);
             if (difficulty === 'easy') speedMultiplier *= 0.8;
             if (difficulty === 'hard') speedMultiplier *= 1.2;
+
+            // Increase enemy shoot cooldown with level (3% per level), cap multiplier at 3x
+            const shootCooldownMultiplier = Math.min(3, 1 + (level - 1) * 0.03);
 
             enemies.push({
                 x: x,
@@ -711,7 +806,7 @@
                 vx: (Math.random() - 0.5) * 3 * speedMultiplier,
                 vy: 2 * speedMultiplier,
                 health: 1,
-                shootCooldown: Math.random() * 60 + 30,
+                shootCooldown: (Math.random() * 60 + 30) * shootCooldownMultiplier,
                 type: Math.random() > 0.7 ? 'strong' : 'normal'
             });
 
@@ -722,9 +817,66 @@
             }
         }
 
+        function spawnBoss() {
+            // Clear small enemies and bullets to focus on boss
+            enemies = [];
+            enemyBullets = [];
+
+            const baseHP = 80 + level * 30;
+            const multiplier = 1 + bossSpawnCount * 0.08; // each spawn +8% HP
+            const hp = Math.max(30, Math.floor(baseHP * multiplier));
+
+            boss = {
+                x: canvas.width / 2 - 120,
+                y: -160,
+                width: 240,
+                height: 140,
+                vx: 2.2,
+                vy: 1.4,
+                health: hp,
+                maxHealth: hp,
+                shootCooldown: 90,
+                entered: false
+            };
+            bossSpawnCount++;
+            console.log('Boss spawned! HP=', boss.health, 'spawnCount=', bossSpawnCount);
+        }
+
+        function updateBoss() {
+            if (!boss) return;
+
+            if (!boss.entered) {
+                boss.y += boss.vy;
+                if (boss.y >= 40) boss.entered = true;
+                return;
+            }
+
+            boss.x += boss.vx;
+            if (boss.x < 10 || boss.x + boss.width > canvas.width - 10) {
+                boss.vx *= -1;
+            }
+
+            boss.shootCooldown--;
+            if (boss.shootCooldown <= 0) {
+                // Boss shoots multiple heavy bullets
+                const shots = 5;
+                for (let i = 0; i < shots; i++) {
+                    const sx = boss.x + boss.width * (i + 1) / (shots + 1);
+                    enemyBullets.push({ x: sx, y: boss.y + boss.height, vx: (i - (shots-1)/2) * 0.6, vy: 3 + level * 0.5 });
+                }
+                boss.shootCooldown = 60 - Math.min(30, level * 2);
+            }
+        }
+
         function spawnPowerup() {
-            const types = Object.keys(POWERUP_TYPES);
-            const type = types[Math.floor(Math.random() * types.length)];
+            // Rare chance for revive, otherwise pick a random non-revive powerup
+            let type;
+            if (Math.random() < 0.03) { // ~3% chance
+                type = 'revive';
+            } else {
+                const types = Object.keys(POWERUP_TYPES).filter(t => t !== 'revive');
+                type = types[Math.floor(Math.random() * types.length)];
+            }
             const x = Math.random() * (canvas.width - powerupRadius * 2) + powerupRadius;
             
             powerups.push({
@@ -755,6 +907,21 @@
             if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
         }
 
+        // Handle continuous shooting, cooldown and rage auto-fire in the main loop
+        function handleShootingTick() {
+            if (player.fireCooldown > 0) player.fireCooldown--;
+
+            // Auto-fire when rage active
+            if (player_effects.gunRage > 0 && player.fireCooldown <= 0) {
+                shoot();
+            }
+
+            // Hold-to-shoot support for keyboard and mobile
+            if ((keys[' '] || mobileControlsState.shootPressed) && player.fireCooldown <= 0) {
+                shoot();
+            }
+        }
+
         function updateBullets() {
             for (let i = bullets.length - 1; i >= 0; i--) {
                 bullets[i].x += bullets[i].vx;
@@ -782,7 +949,8 @@
                         vx: (Math.random() - 0.5) * 2,
                         vy: (3 + level * 0.5) * slowMotionMultiplier
                     });
-                    enemies[i].shootCooldown = Math.random() * 60 + 40;
+                    const shootCooldownMultiplier = Math.min(3, 1 + (level - 1) * 0.03);
+                    enemies[i].shootCooldown = (Math.random() * 60 + 40) * shootCooldownMultiplier;
                 }
 
                 // Enemy off screen
@@ -839,6 +1007,12 @@
                 case 'healthRecover':
                     player.health = Math.min(player.maxHealth, player.health + 50);
                     break;
+                case 'doublePoints':
+                    player_effects.doublePoints += powerupInfo.duration;
+                    break;
+                case 'revive':
+                    player.reviveCount = (player.reviveCount || 0) + 1;
+                    break;
                 case 'slowMotion':
                     player_effects.slowMotion += powerupInfo.duration;
                     break;
@@ -849,6 +1023,22 @@
         }
 
         function checkCollisions() {
+            // Bullet vs EnemyBullet collisions (mutual cancel)
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                for (let j = enemyBullets.length - 1; j >= 0; j--) {
+                    if (
+                        bullets[i].x < enemyBullets[j].x + bulletSize &&
+                        bullets[i].x + bulletSize > enemyBullets[j].x &&
+                        bullets[i].y < enemyBullets[j].y + bulletSize * 1.5 &&
+                        bullets[i].y + bulletSize * 2 > enemyBullets[j].y
+                    ) {
+                        bullets.splice(i, 1);
+                        enemyBullets.splice(j, 1);
+                        break;
+                    }
+                }
+            }
+
             // Bullet-Enemy collisions
             for (let i = bullets.length - 1; i >= 0; i--) {
                 for (let j = enemies.length - 1; j >= 0; j--) {
@@ -861,11 +1051,10 @@
                         const bulletDmg = bullets[i].damage || 1;
                         enemies[j].health -= bulletDmg;
 
-                        if (enemies[j].type === 'normal') {
-                            score += 10;
-                        } else {
-                            score += 30;
-                        }
+                        // Apply score (double points if active)
+                        let basePts = enemies[j].type === 'normal' ? 10 : 30;
+                        if (player_effects.doublePoints > 0) basePts *= 2;
+                        score += basePts;
 
                         if (enemies[j].health <= 0) {
                             enemies.splice(j, 1);
@@ -906,17 +1095,54 @@
                 }
             }
 
-            // Power-up-Player collisions
+            // Power-up-Player and clone collisions
+            const playerCenter = { x: player.x + player.width / 2, y: player.y + player.height / 2 };
+            const cloneActive = player_effects.doubleGun > 0;
+            const cloneX = cloneActive ? getCloneGunX() : 0;
+            const cloneCenter = cloneActive ? { x: cloneX + player.width / 2, y: player.y + player.height / 2 } : null;
+
             for (let i = powerups.length - 1; i >= 0; i--) {
-                const dx = (player.x + player.width / 2) - powerups[i].x;
-                const dy = (player.y + player.height / 2) - powerups[i].y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                if (distance < player.width / 2 + powerups[i].radius) {
-                    activatePowerup(powerups[i].type);
+                const powerup = powerups[i];
+
+                if (tryCollectPowerup(powerup, playerCenter)) {
+                    activatePowerup(powerup.type);
+                    powerups.splice(i, 1);
+                    continue;
+                }
+
+                if (cloneActive && tryCollectPowerup(powerup, cloneCenter)) {
+                    activatePowerup(powerup.type);
                     powerups.splice(i, 1);
                 }
             }
+
+            // Bullets vs Boss
+            if (boss) {
+                for (let i = bullets.length - 1; i >= 0; i--) {
+                    const b = bullets[i];
+                    if (b.x < boss.x + boss.width && b.x + bulletSize > boss.x && b.y < boss.y + boss.height && b.y + bulletSize > boss.y) {
+                        boss.health -= b.damage || 1;
+                        bullets.splice(i, 1);
+                        if (boss.health <= 0) {
+                            // Boss defeated
+                            const bossPts = 200 * 2; // worth two levels
+                            score += bossPts;
+                            boss = null;
+                            // small explosion: clear enemy bullets
+                            enemyBullets = [];
+                            console.log('Boss defeated! +' + bossPts + ' points');
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        function tryCollectPowerup(powerup, center) {
+            const dx = center.x - powerup.x;
+            const dy = center.y - powerup.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return distance < player.width / 2 + powerup.radius;
         }
 
         function updateLevel() {
@@ -924,6 +1150,10 @@
             if (newLevel > level) {
                 level = newLevel;
                 enemySpawnRate += 0.005;
+                // Spawn a boss every 5 levels
+                if (level % 5 === 0 && !boss) {
+                    spawnBoss();
+                }
             }
         }
 
@@ -960,6 +1190,19 @@
                 }
             }
 
+            // Draw boss
+            if (boss) {
+                // Boss body
+                ctx.fillStyle = '#8800ff';
+                ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
+
+                // Boss health bar
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(boss.x, boss.y - 8, boss.width, 6);
+                ctx.fillStyle = '#00ff00';
+                ctx.fillRect(boss.x, boss.y - 8, (boss.health / boss.maxHealth) * boss.width, 6);
+            }
+
             // Draw enemy bullets
             ctx.fillStyle = '#ff0000';
             for (let bullet of enemyBullets) {
@@ -971,7 +1214,36 @@
 
             // Draw active effects indicator
             drawActiveEffects();
+            drawActiveEffectIcons();
+            drawReviveCount();
             drawPowerupDebug();
+        }
+
+        function drawReviveCount() {
+            if (!player.reviveCount || player.reviveCount <= 0) return;
+            const x = canvas.width - 40;
+            const y = 90;
+            const radius = 14;
+
+            ctx.fillStyle = POWERUP_TYPES.revive.color;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = '#000000';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(POWERUP_TYPES.revive.symbol, x, y);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'right';
+            ctx.fillText('x' + player.reviveCount, x + 20, y + 5);
         }
 
         function drawPowerups() {
@@ -1086,27 +1358,102 @@
             ctx.fillText(`Game state: ${gameState}`, 10, canvas.height - 18);
         }
 
-        function drawPlayer() {
-            const x = player.x;
-            const y = player.y;
+        // Leaderboard (localStorage)
+        function getHighscores() {
+            try {
+                const raw = localStorage.getItem('space_shooter_highscores') || '[]';
+                return JSON.parse(raw);
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveHighscore(score) {
+            const hs = getHighscores();
+            hs.push({ score: score, date: new Date().toISOString() });
+            hs.sort((a, b) => b.score - a.score);
+            hs.splice(5); // keep top 5
+            localStorage.setItem('space_shooter_highscores', JSON.stringify(hs));
+        }
+
+        function renderHighscores() {
+            const hs = getHighscores();
+            const startEl = document.getElementById('leaderboardStart');
+            const gameEl = document.getElementById('leaderboardGameOver');
+            const makeList = (el) => {
+                if (!el) return;
+                if (hs.length === 0) {
+                    el.innerHTML = '<li style="color:#aaa;">No highscores yet</li>';
+                    return;
+                }
+                el.innerHTML = hs.map((s, i) => `<li><strong>#${i+1}</strong> ${s.score} <span style="color:#aaa; font-size:12px;">(${new Date(s.date).toLocaleString()})</span></li>`).join('');
+            };
+            makeList(startEl);
+            makeList(gameEl);
+        }
+
+        function clearHighscores() {
+            localStorage.removeItem('space_shooter_highscores');
+            renderHighscores();
+        }
+
+        function drawActiveEffectIcons() {
+            const activeKeys = Object.keys(player_effects).filter(key => player_effects[key] > 0);
+            if (activeKeys.length === 0) return;
+
+            const baseX = canvas.width - 80;
+            const baseY = 40;
+            const radius = 16;
+            const overlap = activeKeys.length > 2 ? 12 : 20;
+
+            for (let i = 0; i < activeKeys.length; i++) {
+                const type = activeKeys[i];
+                const info = POWERUP_TYPES[type];
+                const x = baseX - i * overlap;
+
+                ctx.fillStyle = info.color;
+                ctx.beginPath();
+                ctx.arc(x, baseY, radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.fillStyle = '#000000';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(info.symbol, x, baseY);
+            }
+
+            if (activeKeys.length > 2) {
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '12px Arial';
+                ctx.textAlign = 'right';
+                ctx.fillText(`${activeKeys.length} active`, canvas.width - 10, baseY + 30);
+            }
+        }
+
+        function drawGunAt(gunX, gunY) {
             const w = player.width;
             const h = player.height;
             const receiverHeight = 12;
             const barrelWidth = 10;
             const barrelHeight = h * 0.8;
-            const barrelX = x + w * 0.7;
-            const barrelY = y - barrelHeight + 4;
+            const barrelX = gunX + w * 0.7;
+            const barrelY = gunY - barrelHeight + 4;
 
             // Main receiver
             ctx.fillStyle = '#444';
-            ctx.fillRect(x, y + h * 0.5, w, receiverHeight);
+            ctx.fillRect(gunX, gunY + h * 0.5, w, receiverHeight);
 
             // Stock
             ctx.beginPath();
-            ctx.moveTo(x, y + h * 0.55);
-            ctx.lineTo(x - 18, y + h * 0.5);
-            ctx.lineTo(x - 10, y + h);
-            ctx.lineTo(x, y + h);
+            ctx.moveTo(gunX, gunY + h * 0.55);
+            ctx.lineTo(gunX - 18, gunY + h * 0.5);
+            ctx.lineTo(gunX - 10, gunY + h);
+            ctx.lineTo(gunX, gunY + h);
             ctx.closePath();
             ctx.fill();
 
@@ -1121,20 +1468,32 @@
             // Magazine
             ctx.fillStyle = '#333';
             ctx.beginPath();
-            ctx.moveTo(x + w * 0.25, y + h * 0.55);
-            ctx.lineTo(x + w * 0.55, y + h * 0.55);
-            ctx.lineTo(x + w * 0.6, y + h * 0.95);
-            ctx.lineTo(x + w * 0.2, y + h * 0.95);
+            ctx.moveTo(gunX + w * 0.25, gunY + h * 0.55);
+            ctx.lineTo(gunX + w * 0.55, gunY + h * 0.55);
+            ctx.lineTo(gunX + w * 0.6, gunY + h * 0.95);
+            ctx.lineTo(gunX + w * 0.2, gunY + h * 0.95);
             ctx.closePath();
             ctx.fill();
 
             // Grip
             ctx.fillStyle = '#2a2a2a';
-            ctx.fillRect(x + w * 0.45, y + h * 0.52, 6, h * 0.3);
+            ctx.fillRect(gunX + w * 0.45, gunY + h * 0.52, 6, h * 0.3);
 
             // Rail
             ctx.fillStyle = '#555';
-            ctx.fillRect(x + w * 0.6, y + h * 0.35, w * 0.25, 4);
+            ctx.fillRect(gunX + w * 0.6, gunY + h * 0.35, w * 0.25, 4);
+        }
+
+        function drawPlayer() {
+            const x = player.x;
+            const y = player.y;
+
+            if (player_effects.doubleGun > 0) {
+                const cloneGunX = getCloneGunX();
+                drawGunAt(cloneGunX, y);
+            }
+
+            drawGunAt(x, y);
         }
 
         function drawStars() {
@@ -1153,14 +1512,16 @@
                 updatePlayer();
                 updateBullets();
                 updateEnemies();
+                updateBoss();
                 updateEnemyBullets();
                 updatePowerups();
                 updateActiveEffects();
+                handleShootingTick();
                 checkCollisions();
                 updateLevel();
 
-                // Spawn enemies
-                if (Math.random() < enemySpawnRate) {
+                // Spawn small enemies only when no boss is active
+                if (!boss && Math.random() < enemySpawnRate) {
                     spawnEnemy();
                 }
 
@@ -1174,13 +1535,24 @@
                 updateUI();
                 draw();
 
-                // Check game over
+                // Check game over with revive support
                 if (player.health <= 0) {
-                    gameState = 'gameOver';
-                    document.getElementById('finalScore').textContent = score;
-                    document.getElementById('finalLevel').textContent = level;
-                    document.getElementById('gameOverScreen').classList.remove('hidden');
-                    return;
+                    if (player.reviveCount > 0) {
+                        // Consume revive and restore
+                        player.reviveCount--;
+                        player.health = player.maxHealth;
+                        // Give short invincibility after revive
+                        player_effects.invincibility += 180;
+                    } else {
+                        gameState = 'gameOver';
+                        document.getElementById('finalScore').textContent = score;
+                        document.getElementById('finalLevel').textContent = level;
+                        // Save and render leaderboard
+                        saveHighscore(score);
+                        renderHighscores();
+                        document.getElementById('gameOverScreen').classList.remove('hidden');
+                        return;
+                    }
                 }
 
                 requestAnimationFrame(gameLoop);
@@ -1190,6 +1562,31 @@
         // Initialize mobile controls and draw
         setupMobileControls();
         draw();
+        renderHighscores();
+
+        // Pause / Resume functions
+        function pauseGame() {
+            if (gameState !== 'playing') return;
+            gameState = 'paused';
+            document.getElementById('pauseScreen').classList.remove('hidden');
+        }
+
+        function resumeGame() {
+            if (gameState !== 'paused') return;
+            document.getElementById('pauseScreen').classList.add('hidden');
+            gameState = 'playing';
+            requestAnimationFrame(gameLoop);
+        }
+
+        function openSettings() {
+            // Placeholder for settings UI
+            alert('Settings placeholder — no settings implemented yet.');
+        }
+
+        function quitToMenu() {
+            document.getElementById('pauseScreen').classList.add('hidden');
+            restartGame();
+        }
     </script>
 </body>
 </html>
