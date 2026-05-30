@@ -283,7 +283,6 @@
             }
         }
 
-
         .start-screen, .game-over-screen {
             position: fixed;
             inset: 0;
@@ -301,12 +300,10 @@
             overscroll-behavior: contain;
         }
 
-
         .start-screen.hidden, .game-over-screen.hidden {
             display: none;
         }
 
-        /* Generic hidden helper */
         .hidden {
             display: none !important;
         }
@@ -344,7 +341,6 @@
             transition: all 0.3s ease;
         }
 
-
         .start-button:hover, .restart-button:hover {
             background: #00ffff;
             transform: scale(1.05);
@@ -380,7 +376,8 @@
         .pulse {
             animation: pulse 1s infinite;
         }
-.pause-screen {
+
+        .pause-screen {
             position: fixed;
             inset: 0;
             display: flex;
@@ -391,11 +388,13 @@
             z-index: 30;
             gap: 12px;
         }
+
         .pause-screen .screen-title {
             font-size: 32px;
             color: #fff;
             margin-bottom: 6px;
         }
+
         .pause-screen .pause-controls button {
             margin: 6px;
         }
@@ -413,7 +412,6 @@
                 <div class="ui-item"><button onclick="pauseGame()">Pause</button></div>
             </div>
 
-            <!-- Mobile Controls -->
             <div class="mobile-controls" id="mobileControls">
                 <div class="left-controls">
                     <button class="movement-button" id="leftBtn" data-direction="left">◀</button>
@@ -446,11 +444,9 @@
                 <div style="margin-top:8px; color:#aaa; font-size:12px;">Name is saved with your score when the game ends.</div>
             </div>
 
-
             <div class="instructions" id="leaderboardPanel">
                 <h3 style="color:#00d4ff; margin-bottom:8px;">Local Highscores</h3>
                 <ol id="leaderboardStart" style="text-align:left; color:#fff; margin:0; padding-left:20px;"></ol>
-
             </div>
 
             <div class="difficulty-selector">
@@ -550,8 +546,6 @@
             reviveCount: 0
         };
 
-        
-
         // Bullets
         let bullets = [];
         const bulletSpeed = 7;
@@ -607,7 +601,6 @@
         window.addEventListener('keyup', (e) => {
             keys[e.key] = false;
         });
-        // Pause toggle via UI only (keyboard toggle removed)
 
         // Mobile Controls Setup
         function setupMobileControls() {
@@ -618,7 +611,6 @@
 
             mobileControls.classList.add('active');
 
-            // Left button
             leftBtn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 mobileControlsState.leftPressed = true;
@@ -647,7 +639,6 @@
                 leftBtn.classList.remove('pressed');
             });
 
-            // Right button
             rightBtn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 mobileControlsState.rightPressed = true;
@@ -676,7 +667,6 @@
                 rightBtn.classList.remove('pressed');
             });
 
-            // Shoot button
             shootBtn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 mobileControlsState.shootPressed = true;
@@ -724,7 +714,6 @@
                 return;
             }
 
-            // Show saved name in the game-over screen after death
             const savedNameEl = document.getElementById('savedPlayerName');
             if (savedNameEl) savedNameEl.textContent = playerName;
 
@@ -732,15 +721,13 @@
             gameState = 'playing';
 
             document.getElementById('startScreen').classList.add('hidden');
-            
-            // Reset power-ups and effects
+
             powerups = [];
             powerupSpawnTimer = powerupSpawnInterval;
             for (let effect in player_effects) {
                 player_effects[effect] = 0;
             }
-            
-            // Adjust difficulty
+
             if (difficulty === 'easy') {
                 player.maxHealth = 150;
                 enemySpawnRate = 0.015;
@@ -748,7 +735,7 @@
                 player.maxHealth = 50;
                 enemySpawnRate = 0.035;
             }
-            
+
             player.health = player.maxHealth;
             player.fireCooldown = 0;
             player.reviveCount = 0;
@@ -758,9 +745,7 @@
             gameLoop();
         }
 
-
         function restartGame() {
-            // Reset game state
             score = 0;
             level = 1;
             gameTime = 0;
@@ -770,8 +755,8 @@
             powerups = [];
             powerupSpawnTimer = 0;
             player.health = player.maxHealth;
-            player.x = 400 - 20;  // Canvas is 800 wide, center it
-            player.y = 550;  // Near bottom (600 - 50)
+            player.x = 400 - 20;
+            player.y = 550;
             player.vx = 0;
             player.fireCooldown = 0;
             player.reviveCount = 0;
@@ -779,7 +764,6 @@
             bossSpawnCount = 0;
             enemySpawnRate = 0.02;
 
-            // Reset active effects
             for (let effect in player_effects) {
                 player_effects[effect] = 0;
             }
@@ -787,8 +771,7 @@
             gameState = 'start';
             document.getElementById('gameOverScreen').classList.add('hidden');
             document.getElementById('startScreen').classList.remove('hidden');
-            
-            // Reset mobile controls state
+
             mobileControlsState.leftPressed = false;
             mobileControlsState.rightPressed = false;
         }
@@ -801,11 +784,8 @@
 
         function shoot() {
             if (gameState !== 'playing') return;
-
-            // Respect cooldown
             if (player.fireCooldown > 0) return;
 
-            // Determine fire rate (cooldown) and shot properties
             const rageMultiplier = player_effects.gunRage > 0 ? 0.25 : 1;
             const newCooldown = Math.max(2, Math.floor(player.baseFireRate * rageMultiplier));
             player.fireCooldown = newCooldown;
@@ -859,19 +839,18 @@
             const height = 35;
             const x = Math.random() * (canvas.width - width);
             const y = -height;
-            // Make enemies move slower at higher levels (3% per level), floor at 30% of base
+
             let speedMultiplier = Math.max(0.3, 1 - (level - 1) * 0.03);
             if (difficulty === 'easy') speedMultiplier *= 0.8;
             if (difficulty === 'hard') speedMultiplier *= 1.2;
 
-            // Increase enemy shoot cooldown with level (3% per level), cap multiplier at 3x
             const shootCooldownMultiplier = Math.min(3, 1 + (level - 1) * 0.03);
 
             enemies.push({
-                x: x,
-                y: y,
-                width: width,
-                height: height,
+                x,
+                y,
+                width,
+                height,
                 vx: (Math.random() - 0.5) * 3 * speedMultiplier,
                 vy: 2 * speedMultiplier,
                 health: 1,
@@ -887,12 +866,11 @@
         }
 
         function spawnBoss() {
-            // Clear small enemies and bullets to focus on boss
             enemies = [];
             enemyBullets = [];
 
             const baseHP = 80 + level * 30;
-            const multiplier = 1 + bossSpawnCount * 0.08; // each spawn +8% HP
+            const multiplier = 1 + bossSpawnCount * 0.08;
             const hp = Math.max(30, Math.floor(baseHP * multiplier));
 
             boss = {
@@ -908,7 +886,6 @@
                 entered: false
             };
             bossSpawnCount++;
-            console.log('Boss spawned! HP=', boss.health, 'spawnCount=', bossSpawnCount);
         }
 
         function updateBoss() {
@@ -927,36 +904,38 @@
 
             boss.shootCooldown--;
             if (boss.shootCooldown <= 0) {
-                // Boss shoots multiple heavy bullets
                 const shots = 5;
                 for (let i = 0; i < shots; i++) {
                     const sx = boss.x + boss.width * (i + 1) / (shots + 1);
-                    enemyBullets.push({ x: sx, y: boss.y + boss.height, vx: (i - (shots-1)/2) * 0.6, vy: 3 + level * 0.5 });
+                    enemyBullets.push({
+                        x: sx,
+                        y: boss.y + boss.height,
+                        vx: (i - (shots - 1) / 2) * 0.6,
+                        vy: 3 + level * 0.5
+                    });
                 }
                 boss.shootCooldown = 60 - Math.min(30, level * 2);
             }
         }
 
         function spawnPowerup() {
-            // Rare chance for revive, otherwise pick a random non-revive powerup
             let type;
-            if (Math.random() < 0.03) { // ~3% chance
+            if (Math.random() < 0.03) {
                 type = 'revive';
             } else {
                 const types = Object.keys(POWERUP_TYPES).filter(t => t !== 'revive');
                 type = types[Math.floor(Math.random() * types.length)];
             }
+
             const x = Math.random() * (canvas.width - powerupRadius * 2) + powerupRadius;
-            
             powerups.push({
-                x: x,
+                x,
                 y: -powerupRadius,
-                type: type,
+                type,
                 vx: 0,
                 vy: 1.8,
                 radius: powerupRadius
             });
-            console.log('spawnPowerup', type, 'x=', x.toFixed(0));
         }
 
         function updatePlayer() {
@@ -971,21 +950,17 @@
 
             player.x += player.vx;
 
-            // Boundary check
             if (player.x < 0) player.x = 0;
             if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
         }
 
-        // Handle continuous shooting, cooldown and rage auto-fire in the main loop
         function handleShootingTick() {
             if (player.fireCooldown > 0) player.fireCooldown--;
 
-            // Auto-fire when rage active
             if (player_effects.gunRage > 0 && player.fireCooldown <= 0) {
                 shoot();
             }
 
-            // Hold-to-shoot support for keyboard and mobile
             if ((keys[' '] || mobileControlsState.shootPressed) && player.fireCooldown <= 0) {
                 shoot();
             }
@@ -1004,13 +979,12 @@
 
         function updateEnemies() {
             const slowMotionMultiplier = player_effects.slowMotion > 0 ? 0.4 : 1;
-            
+
             for (let i = enemies.length - 1; i >= 0; i--) {
                 enemies[i].x += enemies[i].vx * slowMotionMultiplier;
                 enemies[i].y += enemies[i].vy * slowMotionMultiplier;
                 enemies[i].shootCooldown--;
 
-                // Enemy shoots
                 if (enemies[i].shootCooldown <= 0) {
                     enemyBullets.push({
                         x: enemies[i].x + enemies[i].width / 2,
@@ -1022,7 +996,6 @@
                     enemies[i].shootCooldown = (Math.random() * 60 + 40) * shootCooldownMultiplier;
                 }
 
-                // Enemy off screen
                 if (enemies[i].y > canvas.height) {
                     enemies.splice(i, 1);
                     player.health -= 10;
@@ -1062,8 +1035,8 @@
 
         function activatePowerup(type) {
             const powerupInfo = POWERUP_TYPES[type];
-            
-            switch(type) {
+
+            switch (type) {
                 case 'doubleBullet':
                     player_effects.doubleBullet += powerupInfo.duration;
                     break;
@@ -1092,7 +1065,6 @@
         }
 
         function checkCollisions() {
-            // Bullet vs EnemyBullet collisions (mutual cancel)
             for (let i = bullets.length - 1; i >= 0; i--) {
                 for (let j = enemyBullets.length - 1; j >= 0; j--) {
                     if (
@@ -1108,7 +1080,6 @@
                 }
             }
 
-            // Bullet-Enemy collisions
             for (let i = bullets.length - 1; i >= 0; i--) {
                 for (let j = enemies.length - 1; j >= 0; j--) {
                     if (
@@ -1120,7 +1091,6 @@
                         const bulletDmg = bullets[i].damage || 1;
                         enemies[j].health -= bulletDmg;
 
-                        // Apply score (double points if active)
                         let basePts = enemies[j].type === 'normal' ? 10 : 30;
                         if (player_effects.doublePoints > 0) basePts *= 2;
                         score += basePts;
@@ -1134,7 +1104,6 @@
                 }
             }
 
-            // Enemy Bullet-Player collisions
             for (let i = enemyBullets.length - 1; i >= 0; i--) {
                 if (
                     enemyBullets[i].x < player.x + player.width &&
@@ -1149,7 +1118,6 @@
                 }
             }
 
-            // Enemy-Player collisions
             for (let i = enemies.length - 1; i >= 0; i--) {
                 if (
                     player.x < enemies[i].x + enemies[i].width &&
@@ -1164,7 +1132,6 @@
                 }
             }
 
-            // Power-up-Player and clone collisions
             const playerCenter = { x: player.x + player.width / 2, y: player.y + player.height / 2 };
             const cloneActive = player_effects.doubleGun > 0;
             const cloneX = cloneActive ? getCloneGunX() : 0;
@@ -1185,7 +1152,6 @@
                 }
             }
 
-            // Bullets vs Boss
             if (boss) {
                 for (let i = bullets.length - 1; i >= 0; i--) {
                     const b = bullets[i];
@@ -1193,13 +1159,10 @@
                         boss.health -= b.damage || 1;
                         bullets.splice(i, 1);
                         if (boss.health <= 0) {
-                            // Boss defeated
-                            const bossPts = 200 * 2; // worth two levels
+                            const bossPts = 200 * 2;
                             score += bossPts;
                             boss = null;
-                            // small explosion: clear enemy bullets
                             enemyBullets = [];
-                            console.log('Boss defeated! +' + bossPts + ' points');
                         }
                         break;
                     }
@@ -1219,7 +1182,6 @@
             if (newLevel > level) {
                 level = newLevel;
                 enemySpawnRate += 0.005;
-                // Spawn a boss every 5 levels
                 if (level % 5 === 0 && !boss) {
                     spawnBoss();
                 }
@@ -1227,61 +1189,42 @@
         }
 
         function draw() {
-            // Clear canvas
             ctx.fillStyle = 'rgba(15, 52, 96, 0.1)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw stars background
             drawStars();
-
-            // Draw player
             drawPlayer();
 
-            // Draw bullets
             ctx.fillStyle = '#00ff00';
             for (let bullet of bullets) {
                 ctx.fillRect(bullet.x, bullet.y, bulletSize, bulletSize * 2);
             }
 
-            // Draw enemies
             for (let enemy of enemies) {
-                if (enemy.type === 'normal') {
-                    ctx.fillStyle = '#ff4444';
-                } else {
-                    ctx.fillStyle = '#ff00ff';
-                }
+                ctx.fillStyle = enemy.type === 'normal' ? '#ff4444' : '#ff00ff';
                 ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
-
-                // Health bar for strong enemies
                 if (enemy.type === 'strong') {
                     ctx.fillStyle = '#00ff00';
                     ctx.fillRect(enemy.x, enemy.y - 5, (enemy.health / 3) * enemy.width, 2);
                 }
             }
 
-            // Draw boss
             if (boss) {
-                // Boss body
                 ctx.fillStyle = '#8800ff';
                 ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
 
-                // Boss health bar
                 ctx.fillStyle = '#ffffff';
                 ctx.fillRect(boss.x, boss.y - 8, boss.width, 6);
                 ctx.fillStyle = '#00ff00';
                 ctx.fillRect(boss.x, boss.y - 8, (boss.health / boss.maxHealth) * boss.width, 6);
             }
 
-            // Draw enemy bullets
             ctx.fillStyle = '#ff0000';
             for (let bullet of enemyBullets) {
                 ctx.fillRect(bullet.x - bulletSize / 2, bullet.y, bulletSize, bulletSize * 1.5);
             }
 
-            // Draw power-ups
             drawPowerups();
-
-            // Draw active effects indicator
             drawActiveEffects();
             drawActiveEffectIcons();
             drawReviveCount();
@@ -1316,14 +1259,11 @@
         }
 
         function drawPowerups() {
-            ctx.globalAlpha = 1;
-            
             for (let i = 0; i < powerups.length; i++) {
                 const powerup = powerups[i];
                 const info = POWERUP_TYPES[powerup.type];
                 if (!info) continue;
-                
-                // Check if any other power-ups are overlapping
+
                 let overlappingCount = 0;
                 for (let j = 0; j < powerups.length; j++) {
                     if (i !== j) {
@@ -1335,44 +1275,37 @@
                         }
                     }
                 }
-                
-                // Draw glow if overlapping with other power-ups
+
                 if (overlappingCount > 0) {
                     ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
                     ctx.beginPath();
                     ctx.arc(powerup.x, powerup.y, powerup.radius + 10, 0, Math.PI * 2);
                     ctx.fill();
                 }
-                
-                // Draw outer circle with color
+
                 ctx.fillStyle = info.color;
                 ctx.beginPath();
                 ctx.arc(powerup.x, powerup.y, powerup.radius, 0, Math.PI * 2);
                 ctx.fill();
-                
-                // Draw border
+
                 ctx.strokeStyle = '#ffffff';
                 ctx.lineWidth = 3;
                 ctx.stroke();
-                
-                // Draw inner circle with darker shade
+
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
                 ctx.beginPath();
                 ctx.arc(powerup.x, powerup.y, powerup.radius * 0.8, 0, Math.PI * 2);
                 ctx.fill();
-                
-                // Draw power-up name in the center
+
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 10px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText(info.name, powerup.x, powerup.y - 5);
-                
-                // Draw symbol below name
+
                 ctx.font = '14px Arial';
                 ctx.fillText(info.symbol, powerup.x, powerup.y + 7);
-                
-                // Show overlap count if overlapping
+
                 if (overlappingCount > 0) {
                     ctx.fillStyle = '#FFD700';
                     ctx.font = 'bold 12px Arial';
@@ -1386,34 +1319,29 @@
             ctx.font = 'bold 14px Arial';
             ctx.textAlign = 'left';
             ctx.fillStyle = '#FFD700';
-            
+
             if (player_effects.doubleBullet > 0) {
-                const stackCount = Math.ceil(player_effects.doubleBullet / 600);
-                ctx.fillText(`2x Bullet: ${Math.ceil(player_effects.doubleBullet / 60)}s (x${stackCount})`, 10, yOffset);
+                ctx.fillText(`2x Bullet: ${Math.ceil(player_effects.doubleBullet / 60)}s (x${Math.ceil(player_effects.doubleBullet / 600)})`, 10, yOffset);
                 yOffset += 20;
             }
             if (player_effects.doubleGun > 0) {
                 ctx.fillStyle = '#FF69B4';
-                const stackCount = Math.ceil(player_effects.doubleGun / 600);
-                ctx.fillText(`2x Gun: ${Math.ceil(player_effects.doubleGun / 60)}s (x${stackCount})`, 10, yOffset);
+                ctx.fillText(`2x Gun: ${Math.ceil(player_effects.doubleGun / 60)}s (x${Math.ceil(player_effects.doubleGun / 600)})`, 10, yOffset);
                 yOffset += 20;
             }
             if (player_effects.invincibility > 0) {
                 ctx.fillStyle = '#00FFFF';
-                const stackCount = Math.ceil(player_effects.invincibility / 600);
-                ctx.fillText(`Shield: ${Math.ceil(player_effects.invincibility / 60)}s (x${stackCount})`, 10, yOffset);
+                ctx.fillText(`Shield: ${Math.ceil(player_effects.invincibility / 60)}s (x${Math.ceil(player_effects.invincibility / 600)})`, 10, yOffset);
                 yOffset += 20;
             }
             if (player_effects.slowMotion > 0) {
                 ctx.fillStyle = '#9D4EDD';
-                const stackCount = Math.ceil(player_effects.slowMotion / 600);
-                ctx.fillText(`Slow: ${Math.ceil(player_effects.slowMotion / 60)}s (x${stackCount})`, 10, yOffset);
+                ctx.fillText(`Slow: ${Math.ceil(player_effects.slowMotion / 60)}s (x${Math.ceil(player_effects.slowMotion / 600)})`, 10, yOffset);
                 yOffset += 20;
             }
             if (player_effects.gunRage > 0) {
                 ctx.fillStyle = '#FF4500';
-                const stackCount = Math.ceil(player_effects.gunRage / 600);
-                ctx.fillText(`Rage: ${Math.ceil(player_effects.gunRage / 60)}s (x${stackCount})`, 10, yOffset);
+                ctx.fillText(`Rage: ${Math.ceil(player_effects.gunRage / 60)}s (x${Math.ceil(player_effects.gunRage / 600)})`, 10, yOffset);
                 yOffset += 20;
             }
         }
@@ -1426,55 +1354,6 @@
             ctx.fillText(`Active powerups: ${powerups.length}`, 10, canvas.height - 34);
             ctx.fillText(`Game state: ${gameState}`, 10, canvas.height - 18);
         }
-
-        // Leaderboard (localStorage)
-        function getHighscores() {
-            try {
-                const raw = localStorage.getItem('space_shooter_highscores') || '[]';
-                return JSON.parse(raw);
-            } catch (e) {
-                return [];
-            }
-        }
-
-        function saveHighscore(name, score) {
-            const hs = getHighscores();
-            const entry = {
-                name: name || 'Player',
-                score: score,
-                date: new Date().toISOString()
-            };
-            hs.push(entry);
-            hs.sort((a, b) => (b.score || 0) - (a.score || 0));
-            hs.splice(5); // keep top 5
-            localStorage.setItem('space_shooter_highscores', JSON.stringify(hs));
-        }
-
-        function renderHighscores() {
-            const hs = getHighscores();
-            const startEl = document.getElementById('leaderboardStart');
-            const gameEl = document.getElementById('leaderboardGameOver');
-            const makeList = (el) => {
-                if (!el) return;
-                if (hs.length === 0) {
-                    el.innerHTML = '<li style="color:#aaa;">No highscores yet</li>';
-                    return;
-                }
-                el.innerHTML = hs
-                    .map((s, i) => {
-                        const name = s && s.name ? s.name : 'Unknown';
-                        const scoreVal = s && typeof s.score === 'number' ? s.score : (s.score || 0);
-                        const dateStr = s && s.date ? new Date(s.date).toLocaleString() : '';
-                        return `<li><strong>#${i + 1}</strong> ${name} - ${scoreVal} <span style="color:#aaa; font-size:12px;">${dateStr ? '(' + dateStr + ')' : ''}</span></li>`;
-                    })
-                    .join('');
-            };
-            makeList(startEl);
-            makeList(gameEl);
-        }
-
-
-
 
         function drawActiveEffectIcons() {
             const activeKeys = Object.keys(player_effects).filter(key => player_effects[key] > 0);
@@ -1523,11 +1402,9 @@
             const barrelX = gunX + w * 0.7;
             const barrelY = gunY - barrelHeight + 4;
 
-            // Main receiver
             ctx.fillStyle = '#444';
             ctx.fillRect(gunX, gunY + h * 0.5, w, receiverHeight);
 
-            // Stock
             ctx.beginPath();
             ctx.moveTo(gunX, gunY + h * 0.55);
             ctx.lineTo(gunX - 18, gunY + h * 0.5);
@@ -1536,15 +1413,12 @@
             ctx.closePath();
             ctx.fill();
 
-            // Barrel (vertical)
             ctx.fillStyle = '#222';
             ctx.fillRect(barrelX, barrelY, barrelWidth, barrelHeight);
 
-            // Muzzle accent
             ctx.fillStyle = '#ffbc42';
             ctx.fillRect(barrelX, barrelY - 6, barrelWidth, 6);
 
-            // Magazine
             ctx.fillStyle = '#333';
             ctx.beginPath();
             ctx.moveTo(gunX + w * 0.25, gunY + h * 0.55);
@@ -1554,11 +1428,9 @@
             ctx.closePath();
             ctx.fill();
 
-            // Grip
             ctx.fillStyle = '#2a2a2a';
             ctx.fillRect(gunX + w * 0.45, gunY + h * 0.52, 6, h * 0.3);
 
-            // Rail
             ctx.fillStyle = '#555';
             ctx.fillRect(gunX + w * 0.6, gunY + h * 0.35, w * 0.25, 4);
         }
@@ -1578,12 +1450,59 @@
         function drawStars() {
             ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
             for (let i = 0; i < 100; i++) {
-                const x = (gameTime * 0.5 + i * 79) % canvas.width;
-                const y = (i * 127) % canvas.height;
-                ctx.fillRect(x, y, 1, 1);
+                const sx = (gameTime * 0.5 + i * 79) % canvas.width;
+                const sy = (i * 127) % canvas.height;
+                ctx.fillRect(sx, sy, 1, 1);
             }
         }
 
+        // Leaderboard (localStorage)
+        function getHighscores() {
+            try {
+                const raw = localStorage.getItem('space_shooter_highscores') || '[]';
+                return JSON.parse(raw);
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveHighscore(name, score) {
+            const hs = getHighscores();
+            const entry = {
+                name: name || 'Player',
+                score: score,
+                date: new Date().toISOString()
+            };
+            hs.push(entry);
+            hs.sort((a, b) => (b.score || 0) - (a.score || 0));
+            hs.splice(5);
+            localStorage.setItem('space_shooter_highscores', JSON.stringify(hs));
+        }
+
+        function renderHighscores() {
+            const hs = getHighscores();
+            const startEl = document.getElementById('leaderboardStart');
+            const gameEl = document.getElementById('leaderboardGameOver');
+            const makeList = (el) => {
+                if (!el) return;
+                if (hs.length === 0) {
+                    el.innerHTML = '<li style="color:#aaa;">No highscores yet</li>';
+                    return;
+                }
+                el.innerHTML = hs
+                    .map((s, i) => {
+                        const name = s && s.name ? s.name : 'Unknown';
+                        const scoreVal = s && typeof s.score === 'number' ? s.score : (s.score || 0);
+                        const dateStr = s && s.date ? new Date(s.date).toLocaleString() : '';
+                        return `<li><strong>#${i + 1}</strong> ${name} - ${scoreVal} <span style="color:#aaa; font-size:12px;">${dateStr ? '(' + dateStr + ')' : ''}</span></li>`;
+                    })
+                    .join('');
+            };
+            makeList(startEl);
+            makeList(gameEl);
+        }
+
+        // Main loop
         function gameLoop() {
             if (gameState === 'playing') {
                 gameTime++;
@@ -1599,12 +1518,10 @@
                 checkCollisions();
                 updateLevel();
 
-                // Spawn small enemies only when no boss is active
                 if (!boss && Math.random() < enemySpawnRate) {
                     spawnEnemy();
                 }
 
-                // Spawn power-ups with timer, only when no power-up is currently active
                 powerupSpawnTimer++;
                 if (powerupSpawnTimer >= powerupSpawnInterval && powerups.length === 0) {
                     spawnPowerup();
@@ -1614,22 +1531,17 @@
                 updateUI();
                 draw();
 
-                // Check game over with revive support
                 if (player.health <= 0) {
                     if (player.reviveCount > 0) {
-                        // Consume revive and restore
                         player.reviveCount--;
                         player.health = player.maxHealth;
-                        // Give short invincibility after revive
                         player_effects.invincibility += 180;
                     } else {
                         gameState = 'gameOver';
                         document.getElementById('finalScore').textContent = score;
                         document.getElementById('finalLevel').textContent = level;
-                        // Save and render leaderboard
                         saveHighscore(playerName, score);
                         renderHighscores();
-
                         document.getElementById('gameOverScreen').classList.remove('hidden');
                         return;
                     }
@@ -1639,7 +1551,7 @@
             }
         }
 
-        // Initialize mobile controls and draw
+        // Initialize
         setupMobileControls();
         draw();
         renderHighscores();
@@ -1659,7 +1571,6 @@
         }
 
         function openSettings() {
-            // Placeholder for settings UI
             alert('Settings placeholder — no settings implemented yet.');
         }
 
@@ -1670,3 +1581,4 @@
     </script>
 </body>
 </html>
+
